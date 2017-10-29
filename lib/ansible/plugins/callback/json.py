@@ -30,6 +30,7 @@ class CallbackModule(CallbackBase):
     def __init__(self, display=None):
         super(CallbackModule, self).__init__(display)
         self.results = []
+        self.in_play = False  # Assume adhoc until play starts
 
     def _new_play(self, play):
         return {
@@ -48,8 +49,16 @@ class CallbackModule(CallbackBase):
             },
             'hosts': {}
         }
+    
+    def _new_adhoc(self):
+        # ad-hoc is always one task, but may be many hosts
+        return {
+            'adhoc': True,
+            'hosts': {}
+        }
 
     def v2_playbook_on_play_start(self, play):
+        self.in_play = True
         self.results.append(self._new_play(play))
 
     def v2_playbook_on_task_start(self, task, is_conditional):
@@ -57,7 +66,15 @@ class CallbackModule(CallbackBase):
 
     def v2_runner_on_ok(self, result, **kwargs):
         host = result._host
-        self.results[-1]['tasks'][-1]['hosts'][host.name] = result._result
+        if self.in_play:
+            self.results[-1]['tasks'][-1]['hosts'][host.name] = result._result
+        else:
+            if not self.results:
+                self.results.append(self._new_adhoc())
+            self.results[-1]['hosts'][host.name] = result._result
+            # How do I know when there are no more ad-hoc hosts to print this out?
+            # If there is no way, then do I require users to support a stream of JSON objects?
+            # Or do I partially print the initial part, and close it at the end... That has the same issue.
 
     def v2_playbook_on_stats(self, stats):
         """Display info about playbook statistics"""
