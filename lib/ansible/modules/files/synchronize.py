@@ -368,6 +368,7 @@ def main():
             rsync_timeout=dict(type='int', default=0),
             rsync_opts=dict(type='list', default=[]),
             ssh_args=dict(type='str'),
+            ssh_cp=dict(type='str'),
             partial=dict(type='bool', default=False),
             verify_host=dict(type='bool', default=False),
             mode=dict(type='str', default='push', choices=['pull', 'push']),
@@ -407,6 +408,7 @@ def main():
     group = module.params['group']
     rsync_opts = module.params['rsync_opts']
     ssh_args = module.params['ssh_args']
+    ssh_cp = module.params['ssh_cp']
     verify_host = module.params['verify_host']
     link_dest = module.params['link_dest']
 
@@ -472,7 +474,11 @@ def main():
 
         # if the user has not supplied an --rsh option go ahead and add ours
         if not has_rsh:
-            ssh_cmd = [module.get_bin_path('ssh', required=True), '-S', 'none']
+            ssh_cmd = [module.get_bin_path('ssh', required=True)]
+            if ssh_cp:
+                ssh_cmd.extend(['-o', 'ControlPath=' + ssh_cp])
+            else:
+                ssh_cmd.extend(['-S', 'none'])
             if private_key is not None:
                 ssh_cmd.extend(['-i', private_key])
             # If the user specified a port value

@@ -26,6 +26,7 @@ from ansible.module_utils._text import to_text
 from ansible.module_utils.parsing.convert_bool import boolean
 from ansible.plugins.action import ActionBase
 from ansible.plugins.loader import connection_loader
+from ansible.utils.path import unfrackpath
 
 
 class ActionModule(ActionBase):
@@ -387,6 +388,16 @@ class ActionModule(ActionBase):
                 getattr(self._play_context, 'ssh_extra_args', ''),
             ]
             _tmp_args['ssh_args'] = ' '.join([a for a in ssh_args if a])
+
+            # Send custom control_paths with ssh_args when not delegating.
+            # If the default generated control_path is ever needed, extract
+            # the generation logic from ssh connection plugin into a utility.
+            # Also, this does not account for ControlPath defined in ssh_args.
+            control_path = C.ANSIBLE_SSH_CONTROL_PATH
+            if control_path and not use_delegate:
+                cpdir = unfrackpath(C.ANSIBLE_SSH_CONTROL_PATH_DIR)
+                if control_path is not None:
+                    _tmp_args['ssh_cp'] = control_path % dict(directory=cpdir)
 
         # If launching synchronize against docker container
         # use rsync_opts to support container to override rsh options
